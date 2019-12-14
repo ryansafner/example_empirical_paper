@@ -11,3 +11,7 @@ This project contains just three important files in the main directory:
 This is one method of organizing files, and performing *all* tasks (writing text; importing, wrangling, and analyzing data; creating tables and plots) in a single file - `paper.Rmd`.
 
 To see another method of organization and separation of tasks across multiple files and folders, see my [Workflow](https://github.com/ryansafner/workflow) repository for an example.
+
+# Compiling to PDF
+
+If you wish to compile the `.Rmd` to a pdf, 

@@ -1,0 +1,304 @@
+---
+title: "Empirical Paper Example"
+author: "Ryan Safner"
+date: "ECON 480 - Fall 2018"
+header-includes:
+    - \usepackage{booktabs} # this makes fancy looking tables in latex/PDF
+    - \usepackage{setspace} \doublespacing #double space PDF
+bibliography: references.bib
+output:
+  pdf_document:
+    number_sections: true # number sections?
+
+fontsize: 12pt
+
+abstract: 'I examine the effect of reducing class size on student performance using data on K12 school districts in California. I find that there is a weakly negative relationship, that on average, a school district with one fewer student per teacher performs 2.28 points better on a California standardized tests. This finding is *not* robust, as it virtually disappears when additional controls are added. **NOTE: this is a barebones example to give you a sense of what a paper should look and feel like. This is not necessarily an "A" paper.**'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, fig.height=2.5)
+library(tidyverse)
+```
+
+<!-- Note above, in the setup R chunk, I set "echo=FALSE" for all chunks to hide the code in the final paper --> 
+
+\clearpage
+
+# Introduction
+
+For this project, I decided to examine the relationship betIen class size and educational performance. This is a topic of considerable importance in education with policy-relevant implications for society. Do students learn better in smaller smaller class sizes? If so, this would imply that local towns and school districts seeking to improve their students' performance ought to allocate more funding towards hiring more teachers and building more classrooms to decrease class size. To explore the relationship between class size and educational performance, I use data on 420 K-6 and K-8 school districts in California and run a simple linear regression. I find that there is a weakly negative relationship, that on average, a school district with one fewer student per teacher performs 2.28 points better on California standardized tests. This result is *not robust* once additional controls are added, indicating there may not be a strong relationship between class size and test scores.
+
+# Data Description
+
+I use data included with @Stock2011 textbook on *Introduction to Econometrics*, which contains data on 420 K-6 and K-8 districts in California for the year 1999. Stock and Watson, in turn, obtained the data from the California Department of Education. In particular, I use two variables, district average *student to teacher ratio*--which is calculated by dividing the number of students in the district by the number of full time equivalent teachers--and district average *test scores*--which are the average of the reading and math scores on the Stanford 9 Achievement Test, a standardized test administered to 5th-grade students. 
+
+\clearpage
+
+| Variable | Description |
+|----------|-------------|
+| `str` | Student-teacher-ratio: number of students in district/number of FTE teachers |
+| `testscr` | District average test score (average of math and reading) on Stanford 9 Achievement Test |
+| `el_pct` | Percentage of district students for whom English is a second language |
+| `avginc` | Average family income (USD) for district |
+Table: Variables and descriptions 
+
+Looking at the data, both student-to-teacher ratio and test score appear to be normally distributed, as can be seen in Figure 1 and Figure 2. The average student-to-teacher ratio is about 20 students per teacher with a standard deviation of about 2 students per teacher. The average test score is about 654 points with a standard deviation of about 19 points. Summary statistics are presented in Table 2. Figures 4 and 5 show a clear relationship between other variables to be included as controls, and test scores.
+
+```{r, load-and-clean-data}
+library("haven") # package for loading Stata .dta files
+CASchool<-read_dta("caschool.dta")
+
+### CLEAN UP DATASET ###
+
+# keep only Test Score, STR, %EL, and Avg Inc variables
+CASchool<-CASchool %>%
+  select("testscr","str","el_pct","avginc")
+```
+
+```{r, summary-statistics-table}
+# This will create a nice table of summary statistics for all variables
+
+CASchool %>%
+  rename(elpct = el_pct) %>% # no variable can have an underscore for this to work...
+summarize_each(funs("Obs"=n(),
+                        "Mean"=round(mean(.,na.rm=TRUE),2),
+                        "Std. Dev."=round(sd(., na.rm=TRUE),2),
+                        "Min"=round(min(., na.rm=TRUE),2),
+                        "Q1"=round(quantile(., 0.25, na.rm=TRUE),2),
+                        "Median"=round(median(., na.rm=TRUE),2),
+                        "Q3"=round(quantile(., 0.75, na.rm=TRUE),2),
+                        "Max"=round(max(., na.rm=TRUE),2)
+    )) %>%
+  gather(key = "stat",
+         value = "val") %>%
+  separate(stat, into = c("var", "stat"), sep = "_") %>%
+  spread(key = "stat", value="val") %>%
+  select("var", "Obs", "Min", "Q1", "Median", "Q3", "Max", "Mean", "Std. Dev.") %>%
+    rename(Variable="var") %>%
+  knitr::kable(., caption = "Summary Statistics")
+```
+
+
+```{r, testscore-histogram, fig.retina=3}
+ggplot(data = CASchool)+
+  aes(x = testscr)+
+  geom_histogram(breaks = seq(600,710,10),
+                 color = "white",
+                 fill = "#e64173")+
+  scale_x_continuous(breaks = seq(600,710,10))+
+  scale_y_continuous(breaks = seq(0,100,10))+
+  labs(x = "Test Scores",
+       y = "Number of School Districts",
+       title = "Figure 1: Histogram of Test Scores by District")+
+  ggthemes::theme_pander()
+```
+
+```{r, str-histogram, fig.retina=3}
+ggplot(data = CASchool)+
+  aes(x = str)+
+  geom_histogram(breaks = seq(14,26,1),
+                 color = "white",
+                 fill = "#e64173")+
+  scale_x_continuous(breaks = seq(14,26,1))+
+  scale_y_continuous(breaks = seq(0,100,10))+
+  labs(x = "Student-to-Teacher Ratio",
+       y = "Number of School Districts",
+       title = "Figure 2: Histogram of STR by District")+
+  ggthemes::theme_pander()
+```
+
+
+```{r, main-scatter, fig.retina=3}
+ggplot(data = CASchool)+
+  aes(x = str,
+      y = testscr)+
+  geom_point(color="#e64173", alpha=0.8)+
+  geom_smooth(method="lm",color="black")+
+  labs(x = "Student-to-Teacher-Ratio",
+       y = "Test Score",
+       title = "Figure 3: Scatterplot of Test Scores and STR")+
+  ggthemes::theme_pander()
+```
+
+
+```{r, scatter-el}
+ggplot(data = CASchool)+
+  aes(x = el_pct,
+      y = testscr)+
+  geom_point(color="#e64173", alpha=0.8)+
+  geom_smooth(method="lm",color="black")+
+  labs(x = "Percentage of ESL Students in District",
+       y = "Test Score",
+       title = "Figure 4: Scatterplot of Test Scores and ESL")+
+  ggthemes::theme_pander()
+```
+
+```{r, scatter-inc}
+ggplot(data = CASchool)+
+  aes(x = avginc,
+      y = testscr)+
+  geom_point(color="#e64173", alpha=0.8)+
+  geom_smooth(method="lm",color="black")+
+  scale_x_continuous(labels = scales::dollar)+
+  labs(x = "Average Income in District",
+       y = "Test Score",
+       title = "Figure 5: Scatterplot of Test Scores and Average Income")+
+  ggthemes::theme_pander()
+```
+
+```{r, correlation-table}
+CASchool %>%
+  select(testscr, str, el_pct, avginc) %>%
+  cor() %>%
+  knitr::kable(., caption = "Correlation Table")
+```
+
+
+# Empirical Model
+
+Equation \ref{eq:regression} describes the empirical model for this cross-sectional linear regression by district $i$.  
+
+\begin{equation}
+\label{eq:regression}
+\widehat{\text{Test Score}_i} = \beta_0 + \beta_1 \, \text{STR}_i + u_i
+\end{equation}
+
+An OLS linear regression is a proper method to estimate the relationship between class sizes and test scores based on the data. There appears to be a clear negative relationship that is roughly linear, as evidenced by the scatterplot depicted in Figure **3**, as well as Table **1**, which shows a negative correlation of $-0.226$. There also do not appear to be any significant outliers that might bias the estimated relationship.
+
+
+
+
+The simple regression model of equation 1 is likely to be endogenous. Student to teacher ratio is likely to be correlated with other factors that strongly affect performance on test scores, such as the proportion of English as a Second Language (ESL) students in a district, and the average income in a district.
+
+Districts that have a larger proportion of ESL students are likely to have lower test scores, due to the difficulty of students writing exams not in their native language. Furthermore, those districts may also have larger class sizes, due to districts with large immigrant populations tending to be loIr income districts. I can see from Table 3 that %ESL correlates with Test Scores fairly strongly and in a negative direction $(-0.644)$, and correlates weakly and positively with STR (0.188). 
+
+Another major factor that affects test scores is and is likely to be correlated with class sizes are outside learning opportunities. Students that have parents who help them with homework and studying, or pay for tutoring opportunities, are much more likely to do Ill on the test. School districts where students have a lot of outside opportunities are also likely to have much smaller classes. I do not have data on outside learning opportunities, but I have good reason to believe that outside learning opportunities are strongly correlated positively with income: parents with high-income likely invest more time and money in the quality of their students' educations, either by spending more time preparing students personally, or by hiring tutors. I do have data on average district income, which acts as a proxy for outside learning opportunities. I can see from Table 3 that average income is very strongly and positively correlated with test score performance (0.712) and weakly and negatively correlated with student teacher ratio $(-0.232)$.
+
+\begin{equation}
+\label{eq:regression2}
+\widehat{\text{Test Score}_i}=\beta_0+\beta_1 \, \text{STR}_i + \beta_2 \, \text{\%ESL}+ \beta_3 \, \text{Average income} + u_i
+\end{equation}
+
+Equation \ref{eq:regression2} incorporates both \%ESL and Average Income as control variables to check if the effect of class size ($\beta_1$) on test scores is robust. 
+
+I predict that smaller class sizes will yield a higher test score, due to increased one-on-one interaction opportunities with the instructor, allowing individual students to learn in a more custom manner and by minimizing distractions from other students. If I am correct, $\beta_1<0$. I test this against the null hypothesis that $\beta_0=0$ with $\alpha=0.05$. 
+
+$$\begin{aligned}
+H_0: & \, \beta_1=0	\\
+H_1: & \, \beta_1<0	\\
+\end{aligned}$$
+
+# Results 
+
+The results of my regression are presented in Table 3. The results from the base regression of test scores on class size imply that reducing the district student-to-teacher ratio by 1 student will yield a district-wide increase in average test score of 2.28 points. This effect is highly statistically significant at the 1% level. According to the regression, if a district were to have a student teacher ratio of 20, the model would predict the average district test score to be about 653.333. The model, however, has a very low $R^2$ indicating that only about 5.1% of the variation in test scores is explained by variation in student-teacher-ratios. The standard error of the regression is about 19 points, indicating significant variation between my model's predictions and the actual values. The large standard error is also visible in Figure 3, which shows quite large residuals for the regression.
+
+It is very likely that our model, while appearing significant, is missing key variables that affect test scores, such as the proportion of a district's students that are learning English as a Second Language (ESL), the average income in the district, and the district expenditures per student. Thus, while our results appear to be significant, we should be very cautious in using these results for prediction or for suggesting educational policies. Columns (2) and (3) add additional controls that are likely correlated with both class size and test score, first %ESL Students, and additionally, district income. Each additional control variable reduces the effect of class size on test score, and fits the data better as the $R^2$ significantly increases and $SER$ decreases. The marginal effect of class size on test scores becomes negligible, and is not statistically significantly different from 0. 
+
+```{r, regressions}
+basereg<-lm(testscr~str, data=CASchool)
+elreg<-lm(testscr~str+el_pct, data=CASchool)
+allreg<-lm(testscr~str+el_pct+avginc, data=CASchool)
+```
+
+
+```{r, regression-table}
+library(huxtable)
+huxreg(basereg,
+       elreg,
+       allreg,
+       coefs = c("Constant" = "(Intercept)",
+                 "Student Teacher Ratio" = "str",
+                 "% ESL Students" = "el_pct",
+                 "Average District Income" = "avginc"),
+       statistics = c("N" = "nobs",
+                      "$R^2$" = "r.squared",
+                      "SER" = "sigma"),
+       number_format = 2) %>%
+  
+  # a lot of customizing below!
+  
+  # allow math to render as R^2
+  set_escape_contents(11,1, FALSE) %>% # R^2 is row 11 column 1
+  # add centered "Test Scores" 
+  insert_row(c("",rep("Test Scores",3))) %>%
+  merge_cells(c(1,1,1), c(2,3,4)) %>%
+  
+  # add line below Test Scores
+  set_top_border(2,1,0) %>%
+  set_top_border(2, 2:4,1) %>%
+  
+  # caption the table
+  set_caption( "Regression Results") %>%
+  
+  # force latex pdf to position table here, damnit!
+  set_latex_float("h")
+```
+
+
+```{r, coef-plot, fig.retina=3}
+# load broom
+library(broom)
+#  tidy regression with confidence intervals
+# save as "reg_tidy"
+tidy(allreg, conf.int = TRUE) %>%
+  filter(term!="(Intercept)") %>%
+ggplot(data = .)+
+  aes(x = estimate,
+      y = term,
+      color = term)+
+  geom_point()+
+  geom_segment(aes(x = conf.low,
+                   xend = conf.high,
+                   y = term,
+                   yend = term))+
+  geom_vline(xintercept = 0, size = 1, color = "black",
+             linetype = "dashed")+
+  guides(color = F)+
+  scale_color_viridis_d()+
+  labs(x = "Marginal Effect Size",
+       y = "Variable",
+       title = "Figure 6: Coefficient Plot")+
+  ggthemes::theme_pander()
+```
+
+The coefficient plot in Figure 6 also shows that Income has the largest effect on test scores, with the class size effect shrinking to almost zero, and becoming very imprecise. 
+
+Since the data are all in very different units, to compare the effect sizes, I standardized all variables and re-ran regression 3. The results are visualized in Figure 7, which again show Average income with the largest effect on test scores. A 1 standard deviation increase in district income will lead to almost a 0.6 standard deviation increase in test scores, while a 1 standard deviation increase in class size will lead to practically a 0 standard deviation change in test scores.
+
+
+```{r, coef-plot-std, fig.retina=3}
+
+# standardize all variables
+CASchool_std<- CASchool %>%
+  mutate(testscr_std=scale(testscr),
+         str_std=scale(str),
+         el_pct_std=scale(el_pct),
+         avginc_std=scale(avginc))
+
+lm(testscr_std ~ str_std + el_pct_std + avginc_std, data = CASchool_std) %>%
+  tidy(conf.int = TRUE) %>%
+  filter(term!="(Intercept)") %>%
+ggplot(data = .)+
+  aes(x = estimate,
+      y = term,
+      color = term)+
+  geom_point()+
+  geom_segment(aes(x = conf.low,
+                   xend = conf.high,
+                   y = term,
+                   yend = term))+
+  geom_vline(xintercept = 0, size = 1, color = "black",
+             linetype = "dashed")+
+  guides(color = F)+
+  scale_color_viridis_d()+
+  labs(x = "Marginal Effect Size (Standardized)",
+       y = "Variable",
+       title = "Figure 7: Coefficient Plot (Standardized)")+
+  ggthemes::theme_pander()
+```
+
+# Conclusion
+
+In the simplest specification, class size has a significant and small effect on Test Scores, about two points are lost per student for every additional student added to a class. However, once additional controls are added, the effect disappears. Therefore, we have little evidence to suggest that class size affects test scores. 
+
+# References
