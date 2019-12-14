@@ -31,4 +31,4 @@ See the `references.bib` file for an example `.bib` file. See more my [1.6 Slide
 
 # Using LaTeX Math
 
-All math is rendered using LaTeX code between two dollar signs, e.g. `$\hat{\beta_1}$` becomes $\hat{\beta_1}$. An excellent guide can be found [here](https://en.wikibooks.org/wiki/LaTeX/Mathematics).
+All math is rendered using LaTeX code between two dollar signs, e.g. `$\hat{\beta_1}$`. An excellent guide can be found [here](https://en.wikibooks.org/wiki/LaTeX/Mathematics).
