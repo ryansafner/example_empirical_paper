@@ -12,6 +12,19 @@ This is one method of organizing files, and performing *all* tasks (writing text
 
 To see another method of organization and separation of tasks across multiple files and folders, see my [Workflow](https://github.com/ryansafner/workflow) repository for an example.
 
-# Compiling to PDF
+# Compiling to a PDF
 
-If you wish to compile the `.Rmd` to a pdf, 
+If you wish to compile the `.Rmd` to a pdf, you will need a LaTeX distribution, which you can download (fairly large) for [Windows](https://miktex.org/) or [Mac](http://www.tug.org/mactex/). Alternatively (and easiest), you can install a distribution *inside* R, with the following code:
+
+```{r}
+install.packages("tinytex")
+tinytex::install_tinytex()
+```
+
+# Using References
+
+See the `references.bib` file for an example `.bib` file. See more my [1.6 Slides](https://metricsf19.classes.ryansafner.com/slides/06-slides#37) for more.
+
+# Using LaTeX Math
+
+All math is rendered using LaTeX code between two dollar signs, e.g. `$\hat{\beta_1}$` becomes $\hat{\beta_1}$. An excellent guide can be found [here](https://en.wikibooks.org/wiki/LaTeX/Mathematics).
