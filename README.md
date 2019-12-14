@@ -12,6 +12,10 @@ This is one method of organizing files, and performing *all* tasks (writing text
 
 To see another method of organization and separation of tasks across multiple files and folders, see my [Workflow](https://github.com/ryansafner/workflow) repository for an example.
 
+# Opening On Your Computer/RStudio
+
+Download this whole repository by clicking the **green button (Clone or Download)** and then downloading as a `.zip` file, which your computer can then unzip. You can look at this whole project in R Studio (with all included files) by opening the `.Rproj` file. Otherwise, you can open individual files individually.
+
 # Compiling to a PDF
 
 If you wish to compile the `.Rmd` to a pdf, you will need a LaTeX distribution, which you can download (fairly large) for [Windows](https://miktex.org/) or [Mac](http://www.tug.org/mactex/). Alternatively (and easiest), you can install a distribution *inside* R, with the following code:
